@@ -185,7 +185,7 @@ def normalize(nmea=sys.stdin,
       line = line.strip() + '\n'  # Get rid of DOS issues.
       stats["line_num"] += 1
       if len(line) < 7 or line[3:6] not in ('VDM', 'VDO'):
-        yield tagblock, line, origline
+        yield tagblock, line, origline, idx
         continue
 
       if validate_checksum and not checksum.isChecksumValid(line):
@@ -206,7 +206,7 @@ def normalize(nmea=sys.stdin,
       totNumSentences = int(fields[1])
       if 1 == totNumSentences:
         # A single line needs no work, so pass it along.
-        yield tagblock, line, origline
+        yield tagblock, line, origline, idx
         continue
 
       sentenceNum = int(fields[2])  # Message sequence number 1..9 (packetNum)
@@ -306,7 +306,7 @@ def normalize(nmea=sys.stdin,
         out_str = out_str.strip()+'\n'  # FIX: Why do I have to do this last strip?
         origstr = ''.join([p['origline'] for p in parts])
 
-        yield tagblock, out_str, origstr
+        yield tagblock, out_str, origstr, idx
 
         continue
 
@@ -319,7 +319,6 @@ def normalize(nmea=sys.stdin,
   if buffers:
     report_error(UnfinishedMessagesError(buffers=buffers))
 
-
 def decode(nmea=sys.stdin,
            errorcb=ErrorPrinter,
            keep_nmea=False,
@@ -329,11 +328,16 @@ def decode(nmea=sys.stdin,
 
   if stats is None: stats={}
 
+
   def report_error(e):
     add_error_to_stats(e, stats)
     errorcb(e, stats, **kw)
 
+  loop_count = 0
+
   for tagblock, line, origline in normalize(nmea=nmea, errorcb=errorcb, stats=stats, **kw):
+    print(str(loop_count))
+    loop_count += 1
     try:
       body = ''.join(line.split(',')[5])
       pad = int(line.split('*')[0][-1])
